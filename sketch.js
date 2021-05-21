@@ -6,11 +6,8 @@ var allPlayers;
 var distance = 0;
 var database;
 var round = 1,
-  question,
+  questionEle,
   questionType,
-  questionNumber = 0,
-  currentQuestion,
-  allQuestions,
   answerOptions,
   givenAnswer,
   answersArray = [];
@@ -22,9 +19,10 @@ var acounter,
   rcounter,
   wtimer,
   wcounter = 10;
-var gameMode = "q";
-var roundPlayers;
-
+var gameMode = "i";
+var roundPlayers,
+  playerScores = [];
+var timer;
 var form, player, game;
 
 function preload() {
@@ -38,14 +36,14 @@ function setup() {
   game.getState();
   game.getCounter();
   game.start();
-  console.log(token);
 }
 
 function draw() {
-  background(255);
-  if (playerCount === 2 && gameState == 0) {
+  background(rgb(198, 135, 103));
+
+  if (playerCount === game.minPlayers && gameState == 0) {
     gameState = -1;
-game.update(-1)
+    game.update(-1);
     wtimer = setInterval(() => {
       var ctr = wcounter - 1;
       game.updateCounter(ctr);

@@ -14,7 +14,7 @@ class Form {
   }
 
   display() {
-    this.title.html("Car Racing Game");
+    this.title.html("Multiplayer Quiz Game");
     this.title.position(displayWidth / 2 - 50, 0);
 
     this.input.position(displayWidth / 2 - 40, displayHeight / 2 - 80);
@@ -37,8 +37,10 @@ class Form {
       game.update(0);
       player.updateCount(0);
       database.ref("players").remove();
+      database.ref("allQuestions").remove();
+      game.updateRound(1);
       Player.updateCarsAtEnd(0);
-      game.updateCounter(10)
+      game.updateCounter(10);
       game.updateRound();
     });
   }
