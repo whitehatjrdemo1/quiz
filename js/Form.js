@@ -41,7 +41,7 @@ class Form {
       game.updateRound(1);
       Player.updateCarsAtEnd(0);
       game.updateCounter(10);
-      game.updateRound();
+      game.updateRound(1);
     });
   }
 }

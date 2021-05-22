@@ -2,18 +2,21 @@ class Game {
   constructor() {
     this.round = 1;
     this.maxPlayers = 15;
-    this.minPlayers = 5;
-    this.totalQuestions = 10;
-    this.questionWait = 10;
-    this.answerWait = 10;
+    this.minPlayers = 2;
+    this.totalQuestions = 3;
+    this.questionWait = 5;
+    this.answerWait = 5;
     this.questionNumber = 0;
     this.currentQuestion = null;
-    this.allQuestions = [];
+    this.allQuestions = null;
     this.difficulty = "easy";
     this.gameMode = "i";
     this.answerOptions = createRadio();
     this.questionEle = createElement("h2");
     this.roundPlayers = 0;
+    this.messageEle = createElement("h2");
+    this.maxRound = 3;
+    this.playerScores = [];
   }
   updateServerTime() {
     var sessionsRef = firebase.database().ref("sessions");
@@ -69,7 +72,7 @@ class Game {
     });
   }
 
-  async getQuestion(num, level) {
+  async getQuestionAPI(num, level) {
     var tokenref = await fetch(
       "https://opentdb.com/api_token.php?command=request"
     );
@@ -86,6 +89,8 @@ class Game {
       level +
       "&type=multiple&token=" +
       token;
+    console.log("get q");
+
     var response = await fetch(url);
 
     var responseJSON = await response.json();
@@ -94,25 +99,37 @@ class Game {
       fetch("https://opentdb.com/api_token.php?command=reset&token=" + token);
     }
     //console.log(responseJSON);
-    this.allQuestions = responseJSON.results;
+    var allQuestions = responseJSON.results;
+    console.log("save q");
 
     database.ref("/").update({
-      allQuestions: this.allQuestions,
+      allQuestions: allQuestions,
+    });
+    console.log("get all q");
+
+   
+  }
+  async getQuestion(){
+    var gameStateRef = await database.ref("allQuestions");
+
+    gameStateRef.on("value", (data) => {
+      this.allQuestions = data.val();
     });
   }
 
   async getSingleQuestion(count) {
     clear();
     console.log("get single q");
-    while (this.currentQuestion == null) {
-      var gameStateRef = await database.ref("allQuestions/" + [count - 1]);
+    // while (this.currentQuestion == null) {
+    //   var gameStateRef = await database.ref("allQuestions/" + [count - 1]);
 
-      var currentQuestionRef = await gameStateRef.once("value");
-      if (currentQuestionRef.exists()) {
-        this.currentQuestion = currentQuestionRef.val();
-      }
-    }
+    //   var currentQuestionRef = await gameStateRef.once("value");
+    //   if (currentQuestionRef.exists()) {
+    //     this.currentQuestion = currentQuestionRef.val();
+    //   }
+    // }
 
+    this.currentQuestion = this.allQuestions[count - 1];
     if (this.currentQuestion) {
       answersArray = [
         this.currentQuestion.correct_answer,
@@ -125,9 +142,9 @@ class Game {
 
       this.answerOptions.hide();
       this.answerOptions = createRadio();
-
+      this.questionEle.show();
       this.questionEle.html(
-        (this.questionNumber+1) + ". " + this.currentQuestion.question
+        this.questionNumber + 1 + ". " + this.currentQuestion.question
       );
       this.questionEle.position(
         displayWidth / 2 - 350,
@@ -158,13 +175,14 @@ class Game {
       }
       form = new Form();
       form.display();
+      this.getRound();
     }
   }
   play() {
     form.hide();
-    this.getRound();
     //clear();
-    this.displayScores(displayWidth - 500, 100, 15);
+
+    this.displayScores(displayWidth - 500, 100, 15,this.playerScores);
     textSize(30);
     text("Round " + this.round, width / 2, height / 2 - 300);
     if (this.gameMode == "i") {
@@ -186,16 +204,23 @@ class Game {
   }
 
   initialize() {
-    if (player.index == 1) {
+    this.questionEle.hide();
+    clear();
+    text("Loading Questions", width / 2, height / 2);
+
+    if (!this.allQuestions&&player.index==1) {
       console.log("get q");
-      this.getQuestion(this.totalQuestions, this.difficulty);
+      this.getQuestionAPI(this.totalQuestions, this.difficulty);
     }
+    this.getQuestion()
     if (this.round == 1) {
       this.gameRound1();
     } else if (this.round == 2) {
       this.gameRound2();
     } else if (this.round == 3) {
-      this.game.round3();
+      this.gameRound3();
+    } else if(this.round>this.maxRound){
+      this.end();
     }
 
     this.currentQuestion = null;
@@ -204,8 +229,10 @@ class Game {
   }
   displayQuestion() {
     //getQ = true;
-    if (this.currentQuestion == null) {
-      this.getSingleQuestion(this.questionNumber+1);
+    if (this.allQuestions) {
+      clear();
+
+      this.getSingleQuestion(this.questionNumber + 1);
     }
     if (this.currentQuestion) {
       this.questionNumber++;
@@ -242,24 +269,30 @@ class Game {
     } else {
       text("You Got That Wrong", width / 2, height / 2 + 50);
     }
-    text(
-      this.currentQuestion.correct_answer + " is the Correct Answer",
-      width / 2,
-      height / 2 + 100
-    );
-    text("Next Question in " + acounter + " secs", width / 2, height / 2 + 150);
 
-    if (acounter == 0) {
+    this.messageEle.show();
+
+    this.messageEle.html(
+      this.currentQuestion.correct_answer + " is the Correct Answer"
+    );
+    this.messageEle.position(width / 2, height / 2 + 100);
+    text("Next Question in " + acounter + " secs", width / 2, height / 2 + 250);
+
+    if (acounter <= 0) {
       this.gameMode = "q";
       clearInterval(atimer);
-      if (givenAnswer == this.currentQuestion.correct_answer) {
+      this.messageEle.hide();
+
+      if (givenAnswer == this.currentQuestion.correct_answer && player.active) {
         player.score += 10;
         player.update();
       }
-      if (this.questionNumber === this.totalQuestions-1) {
+      if (this.questionNumber == this.totalQuestions) {
         var num = this.round + 1;
+
         this.updateRound(num);
         this.gameMode = "rchange";
+        this.questionEle.hide()
         clearInterval(atimer);
         wcounter = 10;
         wtimer = setInterval(function () {
@@ -272,57 +305,66 @@ class Game {
   }
   roundChange() {
     this.roundPlayers = this.maxPlayers;
-    for (var plr in allPlayers) {
-      console.log(playerScores);
-      if (allPlayers[plr].index) {
-        playerScores = [
-          ...[
-            allPlayers[plr].name,
-            allPlayers[plr].score,
-            allPlayers[plr].index,
-          ],
-        ];
-      }
+    this.currentQuestion = "";
+    database.ref("allQuestions").remove();
+    if (game.round <= game.maxRound) {
+      text(
+        "Next Round starting in " + acounter + " secs",
+        width / 2,
+        height / 2 + 250
+      );
+
+      text("Round " + this.round, width / 2, height / 2 - 50);
     }
-    playerScores.sort((a, b) => {
-      b[1] - a[1];
-    });
-    for (var i = this.roundPlayers; i < playerScores.length; i++) {
-      if (player.index == playerScores[i][2]) {
-        player.index = null;
-        player.update();
+    if (wcounter <= 0) {
+      this.playerScores = [];
+      for (var plr in allPlayers) {
+        if (allPlayers[plr].index && allPlayers[plr].active) {
+          this.playerScores = [
+            ...[
+              allPlayers[plr].name,
+              allPlayers[plr].score,
+              allPlayers[plr].index,
+            ],
+          ];
+        }
       }
-    }
-    //reassign player index
-    for (var i = 0; i < this.roundPlayers - 1; i++) {
-      if (player.index == playerScores[i][2]) {
-        player.index = i;
-        player.update();
+      this.playerScores.sort((a, b) => {
+        b[1] - a[1];
+      });
+      for (var i = this.roundPlayers; i < this.playerScores.length; i++) {
+        for (var plr in allPlayers) {
+          if (
+            allPlayers[plr].index == this.playerScores[i][2] &&
+            allPlayers[plr].active
+          ) {
+            allPlayers[plr].active = false;
+            player.update();
+          }
+        }
       }
-    }
-    text("Round " + this.round, width / 2, height / 2 - 100);
-    this.displayScores(width / 2, height / 2, 50);
-    if (rcounter <= 0) {
-      clearInterval(rtimer);
+      clearInterval(wtimer);
       this.gameMode = "i";
-      this.allQuestions = [];
     }
+
+    this.displayScores(width / 2, height / 2, 50, this.playerScores);
   }
+
   gameRound1() {
     this.maxPlayers = 15;
-    this.minPlayers = 5;
-    this.totalQuestions = 10;
-    this.questionWait = 10;
-    this.answerWait = 10;
+    this.minPlayers = 2;
+    this.totalQuestions = 3;
+    this.questionWait = 5;
+    this.answerWait = 5;
     this.questionNumber = 0;
     this.difficulty = "easy";
   }
   gameRound2() {
     this.maxPlayers = 4;
     this.minPlayers = 4;
-    this.totalQuestions = 10;
-    this.questionWait = 10;
-    this.answerWait = 10;
+    this.totalQuestions = 3;
+    this.questionWait = 5;
+    this.answerWait = 5;
     this.questionNumber = 0;
 
     this.difficulty = "easy";
@@ -330,34 +372,63 @@ class Game {
   gameRound3() {
     this.maxPlayers = 2;
     this.minPlayers = 2;
-    this.totalQuestions = 10;
-    this.questionWait = 10;
-    this.answerWait = 10;
+    this.totalQuestions = 3;
+    this.questionWait = 5;
+    this.answerWait = 5;
     this.questionNumber = 0;
 
     this.difficulty = "easy";
   }
-  displayScores(x, y, size) {
+  displayScores(x, y, size, arr) {
     Player.getPlayerInfo();
     if (allPlayers !== undefined) {
       textSize(size);
       fill(255);
+      if (this.gameMode != "rchange") {
+        for (var plr in allPlayers) {
+          y = y + 30;
 
-      var index = 0;
-
-      for (var plr in allPlayers) {
-        index = index + 1;
-
-        y = y + 30;
-
-        if (index === player.index) {
-          fill("green");
-        } else if (player.index == "") {
-          fill("grey");
-        } else {
-          fill("black");
+          if (!allPlayers[plr].active) {
+            fill("grey");
+          } else if (allPlayers[plr].index === player.index) {
+            fill("green");
+          } else {
+            fill("black");
+          }
+          text(allPlayers[plr].name + ": " + allPlayers[plr].score, x, y);
         }
-        text(allPlayers[plr].name + ": " + allPlayers[plr].score, x, y);
+      } else {
+        // var arr=this.playerScores
+        for (var i = 0; i < arr.length; i++) {
+          y = y + 30;
+
+          if (!arr[i].active) {
+            fill("grey");
+          } else if (arr[i].index === player.index) {
+            fill("green");
+          } else {
+            fill("black");
+          }
+          text(arr[i].name + ": " + arr[i].score, x, y);
+        }
+      }
+      if (game.round > game.maxRound) {
+        clear();
+        if (player.index == arr[0].index) {
+          text(
+            "Congratulations!" +
+              this.playerScores[0].name +
+              "You are the Winner of this Game",
+            width / 2,
+            height / 2 - 200
+          );
+        } else {
+          text(
+            this.playerScores[0].name + "is the Winner",
+            width / 2,
+            height / 2 - 200
+          );
+        }
       }
     }
   }
@@ -370,5 +441,21 @@ class Game {
   }
   end() {
     console.log("Game Ended");
+    clear();
+    text("Game Over!", width / 2, height / 2 - 200);
+    this.displayScores(width / 2, height / 2, 50,this.playerScores);
+    this.restart = createButton("Play Again");
+    this.restart.position(width / 2, height / 2 + 100);
+    this.restart.mousePressed(() => {
+      game.update(0);
+      player.updateCount(0);
+      database.ref("players").remove();
+      database.ref("allQuestions").remove();
+      game.updateRound(1);
+      Player.updateCarsAtEnd(0);
+      game.updateCounter(10);
+      game.updateRound();
+      Location.reload();
+    });
   }
 }

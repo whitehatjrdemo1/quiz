@@ -20,14 +20,8 @@ var acounter,
   wtimer,
   wcounter = 10;
 var gameMode = "i";
-var roundPlayers,
-  playerScores = [];
 var timer;
 var form, player, game;
-
-function preload() {
-  ground = loadImage("../images/ground.png");
-}
 
 function setup() {
   canvas = createCanvas(displayWidth - 100, displayHeight - 100);
