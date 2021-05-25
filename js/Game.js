@@ -1,11 +1,11 @@
 class Game {
   constructor() {
-    this.maxPlayers = 15;
+    this.maxPlayers = 10;
     this.minPlayers = 2;
-    this.totalQuestions = 3;
+    this.totalQuestions = 5;
     this.questionWait = 5;
     this.answerWait = 5;
-    this.waitTime = 10;
+    this.waitTime = 15;
     this.questionNumber = 0;
     this.currentQuestion = null;
     this.allQuestions = null;
@@ -38,24 +38,6 @@ class Game {
   updateCounter(ctr) {
     database.ref("/").update({
       counter: ctr,
-    });
-  }
-
-  // getRound() {
-  //   var gameStateRef = database.ref("round");
-  //   gameStateRef.on("value", (data) => {
-  //     this.round = data.val();
-  //   });
-  // }
-  // updateRound(rnd) {
-  //   database.ref("/").update({
-  //     round: rnd,
-  //   });
-  // }
-  getQuestionNumber() {
-    var gameStateRef = database.ref("questionNumber");
-    gameStateRef.on("value", function (data) {
-      this.questionNumber = data.val();
     });
   }
 
@@ -155,19 +137,17 @@ class Game {
     text("Round " + player.round, width / 2, height / 2 - 300);
     if (gameMode == "i") {
       this.initialize();
-    }
-    if (gameMode == "q") {
+    } else if (gameMode == "q") {
       this.displayQuestion();
-    }
-    if (gameMode == "w") {
+    } else if (gameMode == "w") {
       this.wait();
-    }
-    if (gameMode == "a") {
+    } else if (gameMode == "a") {
       this.displayAnswer();
-    }
-    if (gameMode == "rchange" || gameMode == "rchangedone") {
+    } else if (gameMode == "rchange") {
       // //eliminate players
       this.roundChange();
+    } else if (gameMode == "nextRound") {
+      this.nextRound();
     }
   }
 
@@ -175,20 +155,20 @@ class Game {
     this.questionEle.hide();
     clear();
 
-    text("Loading Questions", width / 2, height / 2);
     //var rand = Math.round(random(1, playerCount));
     if (this.allQuestions == null && player.index == 1) {
       this.getQuestionAPI(this.totalQuestions, this.difficulty);
+      console.log("api");
     }
     this.getQuestion();
+    console.log("db call");
+
     if (player.round == 1) {
       this.gameRound1();
     } else if (player.round == 2) {
       this.gameRound2();
     } else if (player.round == 3) {
       this.gameRound3();
-    } else if (player.round > this.maxRound) {
-      gameState=2
     }
 
     this.currentQuestion = null;
@@ -196,6 +176,9 @@ class Game {
     gameMode = "q";
   }
   displayQuestion() {
+    if (!this.allQuestions || !this.currentQuestion) {
+      text("Loading Questions", width / 2, height / 2);
+    }
     if (this.allQuestions) {
       clear();
 
@@ -212,8 +195,7 @@ class Game {
   }
   wait() {
     if (this.currentQuestion) {
-      textSize(30);
-      textAlign(CENTER);
+     
       text(
         "Answer in " + (qcounter + this.questionWait - counter) + " secs",
         width / 2,
@@ -259,7 +241,6 @@ class Game {
       }
       if (this.questionNumber == this.totalQuestions) {
         player.round++;
-        console.log(player.round)
         player.update();
         gameMode = "rchange";
         this.questionEle.hide();
@@ -271,64 +252,81 @@ class Game {
     }
   }
   roundChange() {
-    if (gameMode == "rchange") {
-      if (rounds === true) {
-        gameMode = "rchangedone";
-      }
-      rounds = true;
-
-      var index = 0;
-      for (var plr in allPlayers) {
-        index++;
-        if (allPlayers[plr].round != player.round) {
-          text(
-            "Waiting for " +
-              allPlayers[plr].name +
-              " to finish round " +
-              allPlayers[plr].round,
-            width / 2,
-            index * 100
-          );
-          rounds = false;
-        }
-      }
-    } else if (gameMode === "rchangedone") {
-      clear();
-      this.roundPlayers = this.maxPlayers;
-      this.currentQuestion = "";
-      database.ref("allQuestions").remove();
-      if (counter >= wcounter + this.waitTime - counter) {
-        var playerScores = [];
-        for (var plr in allPlayers) {
-          if (allPlayers[plr].index && allPlayers[plr].active) {
-            playerScores.push([
-              allPlayers[plr].name,
-              allPlayers[plr].score,
-              allPlayers[plr].index,
-            ]);
-          }
-        }
-        this.playerScores = playerScores;
-        this.playerScores.sort((a, b) => {
-          b[1] - a[1];
-        });
-        if (player.round <= game.maxRound) {
-          gameMode = "i";
-
-          var roundPlayers = min(playerCount, this.roundPlayers);
-
-          for (var i = roundPlayers; i < this.playerScores.length; i++) {
-            if (player.index == this.playerScores[i][2] && player.active) {
-              player.active = false;
-              player.update();
-            }
-          }
-
-          text("Round " + player.round, width / 2, height / 2 - 50);
-        } 
-      }
-      this.displayScores(width / 2, height / 2, 50, this.playerScores);
+    if (rounds === true) {
+      gameMode = "nextRound";
     }
+    rounds = true;
+
+    var index = 0;
+    for (var plr in allPlayers) {
+      index++;
+      if (allPlayers[plr].round != player.round) {
+        text(
+          "Waiting for " +
+            allPlayers[plr].name +
+            " to finish round " +
+            allPlayers[plr].round,
+          width / 2,
+          index * 100
+        );
+        rounds = false;
+      }
+    }
+  }
+  nextRound() {
+    clear();
+    this.roundPlayers = this.maxPlayers;
+    this.currentQuestion = "";
+    database.ref("allQuestions").remove();
+    if (counter >= wcounter + this.waitTime - counter) {
+      var playerScores = [];
+      for (var plr in allPlayers) {
+        if (allPlayers[plr].index && allPlayers[plr].active) {
+          playerScores.push([
+            allPlayers[plr].name,
+            allPlayers[plr].score,
+            allPlayers[plr].index,
+          ]);
+        }
+      }
+      this.playerScores = playerScores;
+      this.playerScores.sort((a, b) => {
+        return b[1] - a[1];
+      });
+      if (player.round <= game.maxRound) {
+        var roundPlayers = min(playerCount, this.roundPlayers);
+
+        for (var i = roundPlayers; i < this.playerScores.length; i++) {
+          if (player.index == this.playerScores[i][2] && player.active) {
+            player.active = false;
+            player.update();
+          }
+        }
+
+        text("Round " + player.round, width / 2, height / 2 - 50);
+        if (!player.active) {
+          text(
+            "Sorry you didn't make it to round " + player.round,
+            width / 2,
+            height / 2 - 50
+          );
+          gameState = 2;
+        }
+        for (var plr in allPlayers) {
+          if (allPlayers[plr].active) {
+            text(
+              allPlayers[plr].name + ": " + allPlayers[plr].score,
+              width / 2,
+              height / 2 - 50
+            );
+          }
+        }
+        gameMode = "i";
+      } else {
+        gameState = 2;
+      }
+    }
+    this.displayScores(width / 2, height / 2, 50, this.playerScores);
   }
 
   gameRound1() {
@@ -364,11 +362,10 @@ class Game {
     Player.getPlayerInfo();
     if (allPlayers !== undefined) {
       textSize(size);
-      fill(255);
       if (gameMode != "rchange") {
         for (var plr in allPlayers) {
           y = y + 30;
-
+          push();
           if (!allPlayers[plr].active) {
             fill("grey");
           } else if (allPlayers[plr].index === player.index) {
@@ -376,12 +373,14 @@ class Game {
           } else {
             fill("black");
           }
+          pop();
           text(allPlayers[plr].name + ": " + allPlayers[plr].score, x, y);
         }
       } else {
         // var arr=this.playerScores
         for (var i = 0; i < arr.length; i++) {
           y = y + 30;
+          push();
 
           if (!arr[i].active) {
             fill("grey");
@@ -390,6 +389,8 @@ class Game {
           } else {
             fill("black");
           }
+          pop();
+
           text(arr[i].name + ": " + arr[i].score, x, y);
         }
       }
@@ -404,15 +405,14 @@ class Game {
   }
   end() {
     clear();
-    console.log(this.playerScores)
-    this.playerScores.sort((a, b) => {
-      b[1] - a[1];
-    });
     text("Game Over!", width / 2, height / 2 - 200);
     this.displayScores(width / 2, height / 2, 50, this.playerScores);
     clear();
-    console.log(this.playerScores)
-   
+    console.log(this.playerScores);
+    // this.playerScores.sort((a, b) => {
+    //   b[1] - a[1];
+    // });
+    console.log(this.playerScores);
     if (player.index == this.playerScores[0][2]) {
       text(
         "Congratulations!" +
