@@ -12,15 +12,15 @@ var round = 1,
   givenAnswer,
   answersArray = [];
 var acounter,
+  wcounter,
   qcounter,
-  atimer,
-  qtimer,
-  rtimer,
   rcounter,
   wtimer,
-  wcounter = 10;
+  counter = 10;
 var gameMode = "i";
 var timer;
+var rounds;
+
 var form, player, game;
 
 function setup() {
@@ -39,19 +39,18 @@ function draw() {
     gameState = -1;
     game.update(-1);
     wtimer = setInterval(() => {
-      var ctr = wcounter - 1;
+      var ctr = counter + 1;
       game.updateCounter(ctr);
     }, 1000);
   }
   if (gameState == -1) {
     text(
-      "waiting for more players to join in the next " + wcounter + " seconds",
+      "waiting for more players to join in the next " + counter + " seconds",
       width / 2,
       height / 2
     );
-    if (wcounter <= 0) {
+    if (counter >= game.waitTime) {
       game.update(1);
-      clearInterval(wtimer);
     }
   }
   if (gameState === 1) {

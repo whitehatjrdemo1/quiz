@@ -3,7 +3,8 @@ class Player {
     this.index = null;
     this.name = null;
     this.score = 0;
-    this.active=true
+    this.active = true;
+    this.round = 1;
   }
 
   getCount() {
@@ -25,7 +26,8 @@ class Player {
       name: this.name,
       score: this.score,
       index: this.index,
-      active:this.active
+      active: this.active,
+      round: this.round,
     });
   }
 
