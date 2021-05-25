@@ -34,7 +34,8 @@ function setup() {
 
 function draw() {
   background(rgb(198, 135, 103));
-
+  textAlign(CENTER);
+  fill("black");
   if (playerCount === game.minPlayers && gameState == 0) {
     gameState = -1;
     game.update(-1);

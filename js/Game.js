@@ -188,7 +188,7 @@ class Game {
     } else if (player.round == 3) {
       this.gameRound3();
     } else if (player.round > this.maxRound) {
-      this.end();
+      gameState=2
     }
 
     this.currentQuestion = null;
@@ -259,6 +259,7 @@ class Game {
       }
       if (this.questionNumber == this.totalQuestions) {
         player.round++;
+        console.log(player.round)
         player.update();
         gameMode = "rchange";
         this.questionEle.hide();
@@ -311,7 +312,7 @@ class Game {
         this.playerScores.sort((a, b) => {
           b[1] - a[1];
         });
-        if (game.round <= game.maxRound) {
+        if (player.round <= game.maxRound) {
           gameMode = "i";
 
           var roundPlayers = min(playerCount, this.roundPlayers);
@@ -324,9 +325,7 @@ class Game {
           }
 
           text("Round " + player.round, width / 2, height / 2 - 50);
-        } else {
-          gameState = 2;
-        }
+        } 
       }
       this.displayScores(width / 2, height / 2, 50, this.playerScores);
     }
@@ -405,9 +404,15 @@ class Game {
   }
   end() {
     clear();
+    console.log(this.playerScores)
+    this.playerScores.sort((a, b) => {
+      b[1] - a[1];
+    });
     text("Game Over!", width / 2, height / 2 - 200);
     this.displayScores(width / 2, height / 2, 50, this.playerScores);
     clear();
+    console.log(this.playerScores)
+   
     if (player.index == this.playerScores[0][2]) {
       text(
         "Congratulations!" +
