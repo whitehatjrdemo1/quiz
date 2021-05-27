@@ -132,6 +132,21 @@ class Game {
     form.hide();
     //clear();
     textAlign(CENTER);
+    var playerScores = [];
+    for (var plr in allPlayers) {
+      if (allPlayers[plr].index && allPlayers[plr].active) {
+        playerScores.push([
+          allPlayers[plr].name,
+          allPlayers[plr].score,
+          allPlayers[plr].index,
+          allPlayers[plr].active,
+        ]);
+      }
+    }
+    this.playerScores = playerScores;
+    this.playerScores.sort((a, b) => {
+      return b[1] - a[1];
+    });
     this.displayScores(displayWidth - 500, 100, 15, this.playerScores);
     textSize(30);
     text("Round " + player.round, width / 2, height / 2 - 300);
@@ -148,6 +163,8 @@ class Game {
       this.roundChange();
     } else if (gameMode == "nextRound") {
       this.nextRound();
+    } else if (gameMode == "roundresult") {
+      this.roundResults();
     }
   }
 
@@ -195,7 +212,6 @@ class Game {
   }
   wait() {
     if (this.currentQuestion) {
-     
       text(
         "Answer in " + (qcounter + this.questionWait - counter) + " secs",
         width / 2,
@@ -260,7 +276,7 @@ class Game {
     var index = 0;
     for (var plr in allPlayers) {
       index++;
-      if (allPlayers[plr].round != player.round) {
+      if (allPlayers[plr].active && allPlayers[plr].round != player.round) {
         text(
           "Waiting for " +
             allPlayers[plr].name +
@@ -278,21 +294,7 @@ class Game {
     this.roundPlayers = this.maxPlayers;
     this.currentQuestion = "";
     database.ref("allQuestions").remove();
-    if (counter >= wcounter + this.waitTime - counter) {
-      var playerScores = [];
-      for (var plr in allPlayers) {
-        if (allPlayers[plr].index && allPlayers[plr].active) {
-          playerScores.push([
-            allPlayers[plr].name,
-            allPlayers[plr].score,
-            allPlayers[plr].index,
-          ]);
-        }
-      }
-      this.playerScores = playerScores;
-      this.playerScores.sort((a, b) => {
-        return b[1] - a[1];
-      });
+    if (counter >= wcounter + this.waitTime) {
       if (player.round <= game.maxRound) {
         var roundPlayers = min(playerCount, this.roundPlayers);
 
@@ -300,35 +302,28 @@ class Game {
           if (player.index == this.playerScores[i][2] && player.active) {
             player.active = false;
             player.update();
+            gameState = 2;
           }
         }
 
         text("Round " + player.round, width / 2, height / 2 - 50);
-        if (!player.active) {
-          text(
-            "Sorry you didn't make it to round " + player.round,
-            width / 2,
-            height / 2 - 50
-          );
-          gameState = 2;
-        }
-        for (var plr in allPlayers) {
-          if (allPlayers[plr].active) {
-            text(
-              allPlayers[plr].name + ": " + allPlayers[plr].score,
-              width / 2,
-              height / 2 - 50
-            );
-          }
-        }
-        gameMode = "i";
+
+        gameMode = "roundresult";
+        wcounter = this.waitTime + counter;
       } else {
         gameState = 2;
       }
     }
+
     this.displayScores(width / 2, height / 2, 50, this.playerScores);
   }
+  roundResults() {
+    this.displayScores(width / 2, height / 2, 30, this.playerScores);
 
+    if (counter >= wcounter + this.waitTime) {
+      gameMode = "i";
+    }
+  }
   gameRound1() {
     this.maxPlayers = 15;
     this.minPlayers = 2;
@@ -362,37 +357,21 @@ class Game {
     Player.getPlayerInfo();
     if (allPlayers !== undefined) {
       textSize(size);
-      if (gameMode != "rchange") {
-        for (var plr in allPlayers) {
-          y = y + 30;
-          push();
-          if (!allPlayers[plr].active) {
-            fill("grey");
-          } else if (allPlayers[plr].index === player.index) {
-            fill("green");
-          } else {
-            fill("black");
-          }
-          pop();
-          text(allPlayers[plr].name + ": " + allPlayers[plr].score, x, y);
-        }
-      } else {
-        // var arr=this.playerScores
-        for (var i = 0; i < arr.length; i++) {
-          y = y + 30;
-          push();
 
-          if (!arr[i].active) {
-            fill("grey");
-          } else if (arr[i].index === player.index) {
-            fill("green");
-          } else {
-            fill("black");
-          }
-          pop();
+      for (var i = 0; i < arr.length; i++) {
+        y = y + 30;
+        push();
 
-          text(arr[i].name + ": " + arr[i].score, x, y);
+        if (!arr[i][3]) {
+          fill("grey");
+        } else if (arr[i][2] === player.index) {
+          fill("green");
+        } else {
+          fill("black");
         }
+
+        text(arr[i][0] + ": " + arr[i][1], x, y);
+        pop();
       }
     }
   }
@@ -406,14 +385,37 @@ class Game {
   end() {
     clear();
     text("Game Over!", width / 2, height / 2 - 200);
+    var playerScores = [];
+    for (var plr in allPlayers) {
+      if (allPlayers[plr].index && allPlayers[plr].active) {
+        playerScores.push([
+          allPlayers[plr].name,
+          allPlayers[plr].score,
+          allPlayers[plr].index,
+          allPlayers[plr].active,
+        ]);
+      }
+    }
+    this.playerScores = playerScores;
+    this.playerScores.sort((a, b) => {
+      return b[1] - a[1];
+    });
     this.displayScores(width / 2, height / 2, 50, this.playerScores);
     clear();
-    console.log(this.playerScores);
+
     // this.playerScores.sort((a, b) => {
     //   b[1] - a[1];
     // });
-    console.log(this.playerScores);
-    if (player.index == this.playerScores[0][2]) {
+    if (player.round <= this.maxRound) {
+      if (!player.active) {
+        text(
+          "Sorry you didn't make it to round " + player.round,
+          width / 2,
+          height / 2 - 50
+        );
+        gameState = 2;
+      }
+    } else if (player.index == this.playerScores[0][2]) {
       text(
         "Congratulations!" +
           this.playerScores[0][0] +
