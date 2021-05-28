@@ -19,15 +19,22 @@ class Player {
       playerCount: count,
     });
   }
-
   update() {
     var playerIndex = "players/player" + this.index;
-    database.ref(playerIndex).set({
+    database.ref(playerIndex).update({
       name: this.name,
       score: this.score,
       index: this.index,
       active: this.active,
       round: this.round,
+    });
+  }
+  updateTime(counter, ans) {
+    console.log(counter + "," + ans);
+    var playerIndex = "players/player" + this.index;
+    database.ref(playerIndex).update({
+      timestamp: counter,
+      lastAnswer: ans ? ans : "",
     });
   }
 
